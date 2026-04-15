@@ -3,6 +3,12 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      keyframes: {
+        slideUp: { from: { transform: 'translateY(100%)' }, to: { transform: 'translateY(0)' } },
+      },
+      animation: {
+        slideUp: 'slideUp 0.3s ease-out',
+      },
       colors: {
         primary: {
           DEFAULT: '#C8102E',

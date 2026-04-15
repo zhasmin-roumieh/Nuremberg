@@ -1,7 +1,11 @@
 // Overpass API — free OpenStreetMap data, no key needed
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
+// Multiple endpoints so if one is slow/down, we try the next
+const ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+]
 
-// Base tag lines per category → subtype
 const BASE_QUERIES = {
   food: {
     cafe:       ['node["amenity"="cafe"]',       'way["amenity"="cafe"]'],
@@ -28,91 +32,88 @@ const BASE_QUERIES = {
     building: ['node["historic"="building"]', 'way["historic"="building"]'],
   },
   shopping: {
-    market:     ['node["amenity"="marketplace"]',     'way["amenity"="marketplace"]'],
-    mall:       ['node["shop"="mall"]',                'way["shop"="mall"]'],
-    boutique:   ['node["shop"="clothes"]',             'way["shop"="clothes"]'],
-    souvenir:   ['node["shop"="gift"]',                'way["shop"="gift"]'],
-    books:      ['node["shop"="books"]',               'way["shop"="books"]'],
-    department: ['node["shop"="department_store"]',    'way["shop"="department_store"]'],
+    market:     ['node["amenity"="marketplace"]',  'way["amenity"="marketplace"]'],
+    mall:       ['node["shop"="mall"]',             'way["shop"="mall"]'],
+    boutique:   ['node["shop"="clothes"]',          'way["shop"="clothes"]'],
+    souvenir:   ['node["shop"="gift"]',             'way["shop"="gift"]'],
+    books:      ['node["shop"="books"]',            'way["shop"="books"]'],
+    department: ['node["shop"="department_store"]', 'way["shop"="department_store"]'],
   },
 }
 
-// Append extra OSM tag filters to a tag line, e.g.:
-//   node["amenity"="restaurant"]  →  node["amenity"="restaurant"]["cuisine"~"italian",i]
 function applyTagFilters(tagLine, { cuisine }) {
   let t = tagLine
   if (cuisine && cuisine !== 'any') {
-    // OSM cuisine values can be semicolon-separated, so use regex match
-    const safe = cuisine.replace(/[^a-z0-9_]/gi, '')
-    t += `["cuisine"~"${safe}",i]`
+    // cuisine values can contain semicolons (e.g. "chinese;japanese") — turn into regex OR
+    const pattern = cuisine.split(';').map(c => c.trim().replace(/[^a-z0-9_]/gi, '')).join('|')
+    if (pattern) t += `["cuisine"~"${pattern}",i]`
   }
   return t
 }
 
-function buildOverpassQuery(category, subtype, lat, lng, radius, filters = {}) {
-  const catQueries = BASE_QUERIES[category] || {}
-  let baseLines = []
+function buildQuery(category, subtype, lat, lng, radius, filters = {}) {
+  const catMap = BASE_QUERIES[category] || {}
+  let lines = subtype === 'all'
+    ? Object.values(catMap).flat()
+    : (catMap[subtype] || [])
 
-  if (subtype === 'all') {
-    Object.values(catQueries).forEach(arr => baseLines.push(...arr))
-  } else {
-    baseLines = catQueries[subtype] || []
-  }
+  if (!lines.length) return null
 
   const area  = `(around:${radius},${lat},${lng})`
-  const parts = baseLines
-    .map(t => `  ${applyTagFilters(t, filters)}${area};`)
-    .join('\n')
+  const parts = lines.map(t => `  ${applyTagFilters(t, filters)}${area};`).join('\n')
 
-  return `[out:json][timeout:30];
-(
-${parts}
-);
-out center tags;`
+  return `[out:json][timeout:25];\n(\n${parts}\n);\nout center tags;`
 }
 
-export async function fetchPlaces({
-  category,
-  subtype  = 'all',
-  lat,
-  lng,
-  radius   = 1000,
-  cuisine  = 'any',
-}) {
-  const query = buildOverpassQuery(category, subtype, lat, lng, radius, { cuisine })
+async function runQuery(query) {
+  let lastErr
+  for (const url of ENDPOINTS) {
+    try {
+      const ctrl    = new AbortController()
+      const timer   = setTimeout(() => ctrl.abort(), 18000)
+      const res     = await fetch(url, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body:    `data=${encodeURIComponent(query)}`,
+        signal:  ctrl.signal,
+      })
+      clearTimeout(timer)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return await res.json()
+    } catch (e) {
+      lastErr = e
+    }
+  }
+  throw lastErr
+}
 
-  const res = await fetch(OVERPASS_URL, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body:    `data=${encodeURIComponent(query)}`,
-  })
+export async function fetchPlaces({ category, subtype = 'all', lat, lng, radius = 1000, cuisine = 'any' }) {
+  const query = buildQuery(category, subtype, lat, lng, radius, { cuisine })
+  if (!query) return []
 
-  if (!res.ok) throw new Error('Overpass request failed')
-  const data = await res.json()
+  const data = await runQuery(query)
 
   return data.elements
     .map(el => {
-      const lat = el.lat ?? el.center?.lat
-      const lng = el.lon ?? el.center?.lon
-      if (!lat || !lng) return null
-
+      const elLat = el.lat ?? el.center?.lat
+      const elLng = el.lon ?? el.center?.lon
+      if (!elLat || !elLng) return null
       const tags = el.tags || {}
       return {
-        id:           String(el.id),
-        lat,
-        lng,
-        name:         tags.name || tags['name:en'] || tags['name:de'] || 'Unnamed Place',
+        id:             String(el.id),
+        lat:            elLat,
+        lng:            elLng,
+        name:           tags.name || tags['name:en'] || tags['name:de'] || 'Unnamed Place',
         category,
-        subtype:      getSubtype(tags),
-        cuisine:      tags.cuisine,
-        fee:          tags.fee,
-        openingHours: tags.opening_hours,
-        website:      tags.website,
-        phone:        tags.phone,
-        description:  tags.description || tags['description:en'],
-        address:      buildAddress(tags),
-        priceRange:   tags.price_range || estimatePriceRange(tags),
-        // dietary tags
+        subtype:        tags.amenity || tags.tourism || tags.historic || tags.shop || 'place',
+        cuisine:        tags.cuisine,
+        fee:            tags.fee,
+        openingHours:   tags.opening_hours,
+        website:        tags.website,
+        phone:          tags.phone,
+        description:    tags.description || tags['description:en'],
+        address:        [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(' ') || null,
+        priceRange:     tags['price:range'] || null,
         dietVegetarian: tags['diet:vegetarian'],
         dietVegan:      tags['diet:vegan'],
         dietHalal:      tags['diet:halal'],
@@ -120,24 +121,4 @@ export async function fetchPlaces({
       }
     })
     .filter(Boolean)
-}
-
-function getSubtype(tags) {
-  return tags.amenity || tags.tourism || tags.historic || tags.shop || 'place'
-}
-
-function buildAddress(tags) {
-  const parts = [tags['addr:street'], tags['addr:housenumber']].filter(Boolean)
-  return parts.length ? parts.join(' ') : null
-}
-
-function estimatePriceRange(tags) {
-  if (tags['price:range']) return tags['price:range']
-  if (tags.stars) {
-    const s = parseInt(tags.stars)
-    if (s >= 4) return '€€€'
-    if (s >= 2) return '€€'
-    return '€'
-  }
-  return null
 }
