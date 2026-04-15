@@ -118,6 +118,7 @@ export default function App() {
         userLocation={userLocation}
         routeCount={selectedPlaces.length}
         onShowRoute={() => setShowRoute(true)}
+        onSetLocation={setUserLocation}
       />
 
       <div className="flex-1 relative">
