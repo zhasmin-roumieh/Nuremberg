@@ -9,7 +9,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          gmaps: ['@react-google-maps/api'],
+          leaflet: ['leaflet', 'react-leaflet'],
           react: ['react', 'react-dom'],
         },
       },

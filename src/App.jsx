@@ -4,16 +4,12 @@ import FilterPanel from './components/FilterPanel'
 import PlacesList from './components/PlacesList'
 import RoutePanel from './components/RoutePanel'
 import TopBar from './components/TopBar'
-import TokenGate from './components/TokenGate'
-import { fetchPlaces } from './lib/places'
+import { fetchPlaces } from './lib/overpass'
 
-const GOOGLE_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-
-// Nuremberg city center fallback
+// Nuremberg city centre fallback (used when location is not yet known)
 const NUREMBERG_CENTER = { lat: 49.4521, lng: 11.0767 }
 
 export default function App() {
-  const [googleReady, setGoogleReady]       = useState(false)
   const [userLocation, setUserLocation]     = useState(null)
   const [locating, setLocating]             = useState(false)
   const [places, setPlaces]                 = useState([])
@@ -32,7 +28,7 @@ export default function App() {
     entry:    'any',
   })
 
-  // ── Get user location ──────────────────────────────────────────
+  // ── Locate user ────────────────────────────────────────────────
   const locateUser = useCallback(() => {
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by your browser.')
@@ -53,9 +49,8 @@ export default function App() {
     )
   }, [])
 
-  // ── Search places ──────────────────────────────────────────────
+  // ── Search ─────────────────────────────────────────────────────
   const searchPlaces = useCallback(async (overrideFilters) => {
-    if (!googleReady) return
     const f   = overrideFilters || filters
     const loc = userLocation || NUREMBERG_CENTER
 
@@ -73,22 +68,22 @@ export default function App() {
         radius:   f.distance,
       })
 
-      // Filter by entry type (uses Google's priceLevel: 0 = free)
+      // Entry filter (free / paid)
       if (f.entry !== 'any') {
         results = results.filter(p => {
-          if (f.entry === 'free') return p.fee === 'no' || p.priceLevel === 0
-          if (f.entry === 'paid') return p.fee === 'yes' || (p.priceLevel != null && p.priceLevel > 0)
+          if (f.entry === 'free') return p.fee === 'no' || !p.fee
+          if (f.entry === 'paid') return p.fee === 'yes'
           return true
         })
       }
 
-      // Filter by budget (uses Google's priceLevel 1-4)
+      // Budget filter
       if (f.budget !== 'any' && f.category === 'food') {
         results = results.filter(p => {
-          if (p.priceLevel == null) return true // keep if unknown
-          if (f.budget === '€')   return p.priceLevel <= 1
-          if (f.budget === '€€')  return p.priceLevel === 2
-          if (f.budget === '€€€') return p.priceLevel >= 3
+          if (!p.priceRange) return true
+          if (f.budget === '€')   return p.priceRange === '€'
+          if (f.budget === '€€')  return p.priceRange === '€€'
+          if (f.budget === '€€€') return p.priceRange === '€€€'
           return true
         })
       }
@@ -99,7 +94,7 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }, [filters, userLocation, googleReady])
+  }, [filters, userLocation])
 
   // ── Route helpers ──────────────────────────────────────────────
   const togglePlaceInRoute = useCallback((place) => {
@@ -115,8 +110,6 @@ export default function App() {
     [selectedPlaces]
   )
 
-  if (!GOOGLE_KEY) return <TokenGate />
-
   return (
     <div className="relative h-full w-full flex flex-col bg-gray-50">
       <TopBar
@@ -129,7 +122,6 @@ export default function App() {
 
       <div className="flex-1 relative">
         <MapView
-          apiKey={GOOGLE_KEY}
           center={userLocation || NUREMBERG_CENTER}
           userLocation={userLocation}
           places={places}
@@ -140,7 +132,6 @@ export default function App() {
             setPanelView('list')
           }}
           isInRoute={isInRoute}
-          onApiReady={() => setGoogleReady(true)}
         />
 
         <BottomSheet
@@ -157,7 +148,6 @@ export default function App() {
           isInRoute={isInRoute}
           togglePlaceInRoute={togglePlaceInRoute}
           userLocation={userLocation}
-          searchDisabled={!googleReady}
         />
       </div>
 
@@ -181,15 +171,13 @@ function BottomSheet({
   places, loading, error,
   activePlace, setActivePlace,
   isInRoute, togglePlaceInRoute,
-  userLocation, searchDisabled,
+  userLocation,
 }) {
   const [expanded, setExpanded] = useState(false)
   const sheetHeight = expanded ? 'h-[75vh]' : 'h-[42vh]'
 
   return (
-    <div
-      className={`absolute bottom-0 left-0 right-0 ${sheetHeight} bg-white rounded-t-2xl shadow-2xl transition-all duration-300 flex flex-col`}
-    >
+    <div className={`absolute bottom-0 left-0 right-0 ${sheetHeight} bg-white rounded-t-2xl shadow-2xl transition-all duration-300 flex flex-col`}>
       <button
         className="w-full pt-3 pb-1 flex justify-center"
         onClick={() => setExpanded(e => !e)}
@@ -218,7 +206,6 @@ function BottomSheet({
             setFilters={setFilters}
             onSearch={onSearch}
             loading={loading}
-            disabled={searchDisabled}
           />
         ) : (
           <PlacesList

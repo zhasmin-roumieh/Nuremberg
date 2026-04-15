@@ -67,7 +67,7 @@ const ENTRIES = [
   { id: 'paid', label: 'Paid Entry' },
 ]
 
-export default function FilterPanel({ filters, setFilters, onSearch, loading, disabled }) {
+export default function FilterPanel({ filters, setFilters, onSearch, loading }) {
   const set = (key, val) => setFilters(f => ({ ...f, [key]: val }))
 
   return (
@@ -159,7 +159,7 @@ export default function FilterPanel({ filters, setFilters, onSearch, loading, di
       {/* Search button */}
       <button
         onClick={() => onSearch()}
-        disabled={loading || disabled}
+        disabled={loading}
         className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary-500 hover:bg-primary-600
           text-white font-semibold rounded-xl shadow-md transition-colors disabled:opacity-60"
       >
@@ -168,7 +168,7 @@ export default function FilterPanel({ filters, setFilters, onSearch, loading, di
         ) : (
           <Search size={18} />
         )}
-        {loading ? 'Searching…' : disabled ? 'Loading map…' : 'Find Places'}
+        {loading ? 'Searching…' : 'Find Places'}
       </button>
     </div>
   )

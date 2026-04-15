@@ -1,4 +1,4 @@
-import { MapPin, Plus, Check, ExternalLink, Star } from 'lucide-react'
+import { MapPin, Plus, Check, Clock, Globe, Phone, ExternalLink } from 'lucide-react'
 import { calcDistance, formatDistance } from '../lib/utils'
 import { placeGoogleMapsUrl } from '../lib/routing'
 
@@ -43,20 +43,11 @@ function PlaceCard({ place, isActive, inRoute, onSelect, onToggleRoute, userLoca
 
   return (
     <div
-      className={`transition-colors cursor-pointer ${isActive ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+      className={`px-4 py-3 transition-colors cursor-pointer
+        ${isActive ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
       onClick={onSelect}
     >
-      {/* Photo strip (only when expanded) */}
-      {isActive && place.photo && (
-        <img
-          src={place.photo}
-          alt={place.name}
-          className="w-full h-36 object-cover"
-          loading="lazy"
-        />
-      )}
-
-      <div className="px-4 py-3 flex items-start gap-3">
+      <div className="flex items-start gap-3">
         {/* Icon */}
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0
           ${inRoute ? 'bg-primary-100' : 'bg-gray-100'}`}
@@ -69,7 +60,8 @@ function PlaceCard({ place, isActive, inRoute, onSelect, onToggleRoute, userLoca
             <div className="min-w-0">
               <p className="font-semibold text-gray-900 text-sm leading-snug">{place.name}</p>
               <p className="text-xs text-gray-500 mt-0.5 capitalize">
-                {place.subtype}
+                {place.subtype?.replace(/_/g, ' ')}
+                {place.cuisine && ` · ${capitalize(place.cuisine)}`}
                 {place.priceRange && ` · ${place.priceRange}`}
               </p>
             </div>
@@ -95,17 +87,17 @@ function PlaceCard({ place, isActive, inRoute, onSelect, onToggleRoute, userLoca
                 <MapPin size={11} /> {dist}
               </span>
             )}
-            {place.rating != null && (
-              <span className="flex items-center gap-1 text-xs text-amber-500 font-medium">
-                <Star size={11} fill="currentColor" />
-                {place.rating.toFixed(1)}
-                {place.ratingsTotal != null && (
-                  <span className="text-gray-400 font-normal">({place.ratingsTotal.toLocaleString()})</span>
-                )}
+            {place.fee === 'no' && (
+              <span className="text-xs text-green-600 font-medium">Free entry</span>
+            )}
+            {place.fee === 'yes' && (
+              <span className="text-xs text-amber-600 font-medium">Paid entry</span>
+            )}
+            {place.openingHours && (
+              <span className="flex items-center gap-1 text-xs text-gray-500">
+                <Clock size={11} /> {truncate(place.openingHours, 30)}
               </span>
             )}
-            {place.openNow === true  && <span className="text-xs text-green-600 font-medium">Open now</span>}
-            {place.openNow === false && <span className="text-xs text-red-500 font-medium">Closed</span>}
           </div>
 
           {/* Expanded details */}
@@ -114,6 +106,9 @@ function PlaceCard({ place, isActive, inRoute, onSelect, onToggleRoute, userLoca
               {place.address && (
                 <p className="text-xs text-gray-500">{place.address}</p>
               )}
+              {place.description && (
+                <p className="text-xs text-gray-500 italic">{truncate(place.description, 120)}</p>
+              )}
               <div className="flex gap-2 mt-2 flex-wrap">
                 <a
                   href={placeGoogleMapsUrl(place)}
@@ -121,8 +116,27 @@ function PlaceCard({ place, isActive, inRoute, onSelect, onToggleRoute, userLoca
                   onClick={e => e.stopPropagation()}
                   className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
                 >
-                  <ExternalLink size={11} /> Open in Google Maps
+                  <ExternalLink size={11} /> Open in Maps
                 </a>
+                {place.website && (
+                  <a
+                    href={place.website}
+                    target="_blank" rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100"
+                  >
+                    <Globe size={11} /> Website
+                  </a>
+                )}
+                {place.phone && (
+                  <a
+                    href={`tel:${place.phone}`}
+                    onClick={e => e.stopPropagation()}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100"
+                  >
+                    <Phone size={11} /> Call
+                  </a>
+                )}
               </div>
             </div>
           )}
@@ -158,4 +172,14 @@ function EmptyState() {
       <p className="text-sm text-gray-500">Choose a category and tap "Find Places" to explore Nuremberg!</p>
     </div>
   )
+}
+
+function capitalize(str) {
+  if (!str) return ''
+  return str.split(';')[0].trim().replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function truncate(str, max) {
+  if (!str || str.length <= max) return str
+  return str.slice(0, max) + '…'
 }
