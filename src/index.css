@@ -24,6 +24,11 @@
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
+/* Monochrome map tiles (markers stay coloured) */
+.leaflet-tile-pane {
+  filter: grayscale(1);
+}
+
 /* Bottom sheet drag handle */
 .drag-handle {
   width: 40px;
