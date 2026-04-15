@@ -111,7 +111,7 @@ export default function App() {
   )
 
   return (
-    <div className="relative h-full w-full flex flex-col bg-gray-50">
+    <div className="relative h-full w-full flex flex-col bg-gray-50 overflow-hidden">
       <TopBar
         locating={locating}
         onLocate={locateUser}
@@ -121,7 +121,9 @@ export default function App() {
         onSetLocation={setUserLocation}
       />
 
-      <div className="flex-1 relative">
+      {/* z-0 creates a stacking context so Leaflet's internal z-indices
+          don't bleed out and cover the bottom sheet or top bar */}
+      <div className="flex-1 relative z-0">
         <MapView
           center={userLocation || NUREMBERG_CENTER}
           userLocation={userLocation}
@@ -178,7 +180,7 @@ function BottomSheet({
   const sheetHeight = expanded ? 'h-[75vh]' : 'h-[42vh]'
 
   return (
-    <div className={`absolute bottom-0 left-0 right-0 ${sheetHeight} bg-white rounded-t-2xl shadow-2xl transition-all duration-300 flex flex-col`}>
+    <div className={`absolute bottom-0 left-0 right-0 ${sheetHeight} z-10 bg-white rounded-t-2xl shadow-2xl transition-all duration-300 flex flex-col`}>
       <button
         className="w-full pt-3 pb-1 flex justify-center"
         onClick={() => setExpanded(e => !e)}
