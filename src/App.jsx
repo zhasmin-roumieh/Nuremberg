@@ -121,21 +121,24 @@ export default function App() {
         onSetLocation={setUserLocation}
       />
 
-      {/* z-0 creates a stacking context so Leaflet's internal z-indices
-          don't bleed out and cover the bottom sheet or top bar */}
-      <div className="flex-1 relative z-0">
-        <MapView
-          center={userLocation || NUREMBERG_CENTER}
-          userLocation={userLocation}
-          places={places}
-          selectedPlaces={selectedPlaces}
-          activePlace={activePlace}
-          onPlaceClick={place => {
-            setActivePlace(place)
-            setPanelView('list')
-          }}
-          isInRoute={isInRoute}
-        />
+      <div className="flex-1 relative">
+        {/* This wrapper gives the map its own stacking context (position+z-index).
+            All Leaflet z-indices (up to 1000) are trapped inside it,
+            so they can never cover the bottom sheet sitting outside it. */}
+        <div className="absolute inset-0 z-0">
+          <MapView
+            center={userLocation || NUREMBERG_CENTER}
+            userLocation={userLocation}
+            places={places}
+            selectedPlaces={selectedPlaces}
+            activePlace={activePlace}
+            onPlaceClick={place => {
+              setActivePlace(place)
+              setPanelView('list')
+            }}
+            isInRoute={isInRoute}
+          />
+        </div>
 
         <BottomSheet
           panelView={panelView}
