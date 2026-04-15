@@ -26,6 +26,9 @@ export default function App() {
     distance: 1000,
     budget:   'any',
     entry:    'any',
+    cuisine:  'any',
+    dietary:  'any',
+    keyword:  '',
   })
 
   // ── Locate user ────────────────────────────────────────────────
@@ -66,13 +69,35 @@ export default function App() {
         lat:      loc.lat,
         lng:      loc.lng,
         radius:   f.distance,
+        cuisine:  f.cuisine,
       })
+
+      // Keyword — client-side match across name, cuisine, description
+      if (f.keyword.trim()) {
+        const kw = f.keyword.trim().toLowerCase()
+        results = results.filter(p =>
+          [p.name, p.cuisine, p.description, p.subtype]
+            .filter(Boolean)
+            .some(v => v.toLowerCase().includes(kw))
+        )
+      }
 
       // Entry filter (free / paid)
       if (f.entry !== 'any') {
         results = results.filter(p => {
           if (f.entry === 'free') return p.fee === 'no' || !p.fee
           if (f.entry === 'paid') return p.fee === 'yes'
+          return true
+        })
+      }
+
+      // Dietary — client-side (OSM diet:* tags)
+      if (f.dietary !== 'any') {
+        results = results.filter(p => {
+          const yes = ['yes', 'only']
+          if (f.dietary === 'vegetarian') return yes.includes(p.dietVegetarian)
+          if (f.dietary === 'vegan')      return yes.includes(p.dietVegan)
+          if (f.dietary === 'halal')      return yes.includes(p.dietHalal)
           return true
         })
       }
