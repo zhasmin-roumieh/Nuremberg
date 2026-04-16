@@ -97,31 +97,11 @@ export async function fetchWikiPlaces({ category, subtype = 'all', lat, lng, rad
     }
   }).filter(Boolean)
 
-  // Filter by subtype keywords if a specific subtype is chosen
-  if (subtype !== 'all' && SUBTYPE_HINTS[subtype]) {
-    const hints = SUBTYPE_HINTS[subtype]
-    places = places.filter(p => {
-      const text = `${p.name} ${p.description || ''}`.toLowerCase()
-      return hints.some(h => text.includes(h))
-    })
-    // If too strict (< 3 results), fall back to all
-    if (places.length < 3) {
-      places = geoList.map(geo => {
-        const page = pages[geo.pageid]
-        if (!page || page.missing !== undefined) return null
-        const coords = page.coordinates?.[0]
-        const extract = page.extract || ''
-        return {
-          id: String(geo.pageid), name: geo.title,
-          lat: coords?.lat ?? geo.lat, lng: coords?.lon ?? geo.lon,
-          category, subtype: detectSubtype(geo.title, extract),
-          description: extract || null, photo: pages[geo.pageid]?.thumbnail?.source || null,
-          website: pages[geo.pageid]?.fullurl || null, address: null, rating: null,
-          priceRange: null, openNow: null, phone: null, fee: detectFee(extract),
-          cuisine: null, dietVegetarian: null, dietVegan: null, dietHalal: null,
-        }
-      }).filter(Boolean)
-    }
+  // Filter by subtype — each place already has a subtype assigned by detectSubtype()
+  if (subtype !== 'all') {
+    // 'attraction' is a generic bucket in the UI — map it to 'landmark' (the detectSubtype fallback)
+    const target = subtype === 'attraction' ? 'landmark' : subtype
+    places = places.filter(p => p.subtype === target)
   }
 
   // Filter by keyword
