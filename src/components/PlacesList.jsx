@@ -1,4 +1,4 @@
-import { MapPin, Plus, Check, Clock, Globe, Phone, ExternalLink, RefreshCw } from 'lucide-react'
+import { MapPin, Plus, Check, Globe, Phone, ExternalLink, RefreshCw, Star } from 'lucide-react'
 import { calcDistance, formatDistance } from '../lib/utils'
 import { placeGoogleMapsUrl } from '../lib/routing'
 
@@ -60,25 +60,30 @@ function PlaceCard({ place, isActive, inRoute, onSelect, onToggleRoute, userLoca
             </button>
           </div>
 
-          <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+          <div className="flex items-center gap-2.5 mt-1.5 flex-wrap">
             {dist && (
               <span className="flex items-center gap-1 text-xs text-gray-400">
                 <MapPin size={10} /> {dist}
               </span>
             )}
-            {place.fee === 'no' && <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-1.5 py-0.5 rounded-md">Free</span>}
-            {place.fee === 'yes' && <span className="text-xs text-amber-600 font-medium bg-amber-50 px-1.5 py-0.5 rounded-md">Paid</span>}
-            {place.dietVegan === 'yes' && <span className="text-xs text-green-600 font-medium">🌱 Vegan</span>}
-            {place.dietVegetarian === 'yes' && !place.dietVegan && <span className="text-xs text-green-600 font-medium">🥗 Vegetarian</span>}
-            {place.openingHours && (
-              <span className="flex items-center gap-1 text-xs text-gray-400">
-                <Clock size={10} /> {trunc(place.openingHours, 26)}
+            {place.rating != null && (
+              <span className="flex items-center gap-1 text-xs text-amber-500 font-semibold">
+                <Star size={10} fill="currentColor" /> {place.rating}
               </span>
             )}
+            {place.priceRange && (
+              <span className="text-xs text-gray-400 font-medium">{place.priceRange}</span>
+            )}
+            {place.openNow === true  && <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-1.5 py-0.5 rounded-md">Open</span>}
+            {place.openNow === false && <span className="text-xs text-red-500 font-medium bg-red-50 px-1.5 py-0.5 rounded-md">Closed</span>}
           </div>
 
           {isActive && (
             <div className="mt-3 space-y-2.5 border-t border-gray-100 pt-2.5">
+              {place.photo && (
+                <img src={place.photo} alt={place.name}
+                  className="w-full h-32 object-cover rounded-xl" loading="lazy" />
+              )}
               {place.address && <p className="text-xs text-gray-500">{place.address}</p>}
               {place.description && <p className="text-xs text-gray-500 italic leading-relaxed">{trunc(place.description, 140)}</p>}
               <div className="flex gap-2 flex-wrap">
