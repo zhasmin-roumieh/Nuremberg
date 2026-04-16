@@ -4,10 +4,8 @@ import FilterPanel from './components/FilterPanel'
 import PlacesList from './components/PlacesList'
 import RoutePanel from './components/RoutePanel'
 import TopBar from './components/TopBar'
-import { fetchPlaces } from './lib/foursquare'
-import TokenGate from './components/TokenGate'
+import { fetchPlaces } from './lib/places'
 
-const FSQ_KEY = import.meta.env.VITE_FOURSQUARE_API_KEY
 const NUREMBERG_CENTER = { lat: 49.4521, lng: 11.0767 }
 
 export default function App() {
@@ -33,8 +31,6 @@ export default function App() {
     keyword:  '',
   })
 
-  if (!FSQ_KEY) return <TokenGate />
-
   const locateUser = useCallback(() => {
     if (!navigator.geolocation) return
     setLocating(true); setError(null)
@@ -57,7 +53,6 @@ export default function App() {
         radius: f.distance,
         cuisine: f.cuisine,
         keyword: f.keyword,
-        apiKey: FSQ_KEY,
       })
 
       // Entry
