@@ -73,7 +73,12 @@ function PlaceCard({ place, isActive, inRoute, onSelect, onToggleRoute, userLoca
                 <p className="text-xs text-gray-400 mt-0.5 capitalize">
                   {place.subtype?.replace(/_/g,' ')}
                   {place.cuisine && <> · {cap(place.cuisine)}</>}
-                  {place.priceRange && <> · <span className="font-medium">{place.priceRange}</span></>}
+                  {place.priceRange && (
+                    <> · <span className="font-semibold text-gray-600">
+                      {place.priceRange}
+                      {place.priceIsInferred && <span className="font-normal text-gray-400"> est.</span>}
+                    </span></>
+                  )}
                 </p>
               )}
             </div>

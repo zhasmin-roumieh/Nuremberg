@@ -55,10 +55,10 @@ export default function App() {
         keyword: f.keyword,
       })
 
-      // Entry
+      // Entry — only include places with an explicit fee tag to avoid false positives
       if (f.entry !== 'any') {
         results = results.filter(p =>
-          f.entry === 'free' ? (p.fee === 'no' || !p.fee) : p.fee === 'yes'
+          f.entry === 'free' ? p.fee === 'no' : p.fee === 'yes'
         )
       }
 
@@ -73,12 +73,9 @@ export default function App() {
         })
       }
 
-      // Budget
+      // Budget — now works because overpass always infers a tier
       if (f.budget !== 'any' && f.category === 'food') {
-        results = results.filter(p => {
-          if (!p.priceRange) return true
-          return p.priceRange === f.budget
-        })
+        results = results.filter(p => !p.priceRange || p.priceRange === f.budget)
       }
 
       setPlaces(results)

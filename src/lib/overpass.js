@@ -87,6 +87,41 @@ async function runQuery(query) {
   throw lastErr
 }
 
+// Infer price tier from OSM tags + amenity type
+// Returns: '€', '€€', '€€€' or null
+function inferPrice(tags) {
+  // 1. Explicit OSM price:range tag
+  const pr = (tags['price:range'] || '').toLowerCase()
+  if (pr === 'budget'   || pr === '1') return '€'
+  if (pr === 'moderate' || pr === '2') return '€€'
+  if (pr === 'expensive'|| pr === '3') return '€€€'
+  if (pr === 'luxury'   || pr === '4') return '€€€'
+
+  // 2. stars tag (some restaurants)
+  const stars = parseInt(tags.stars, 10)
+  if (stars >= 4) return '€€€'
+  if (stars >= 2) return '€€'
+
+  // 3. Infer from amenity/shop type — rough but better than nothing
+  const type = tags.amenity || tags.shop || ''
+  if (['fast_food', 'ice_cream'].includes(type)) return '€'
+  if (type === 'bakery') return '€'
+  if (type === 'cafe')   return '€€'
+  if (type === 'bar')    return '€€'
+  if (type === 'restaurant') return '€€'
+
+  return null
+}
+
+// Map inferred € tier to filter bucket so budget filter actually works
+function priceToBucket(priceRange) {
+  if (!priceRange) return null
+  if (priceRange === '€')   return '€'
+  if (priceRange === '€€')  return '€€'
+  if (priceRange === '€€€') return '€€€'
+  return null
+}
+
 export async function fetchPlaces({ category, subtype = 'all', lat, lng, radius = 1000, cuisine = 'any' }) {
   const query = buildQuery(category, subtype, lat, lng, radius, { cuisine })
   if (!query) return []
@@ -98,7 +133,8 @@ export async function fetchPlaces({ category, subtype = 'all', lat, lng, radius 
       const elLat = el.lat ?? el.center?.lat
       const elLng = el.lon ?? el.center?.lon
       if (!elLat || !elLng) return null
-      const tags = el.tags || {}
+      const tags    = el.tags || {}
+      const inferred = inferPrice(tags)
       return {
         id:             String(el.id),
         lat:            elLat,
@@ -113,7 +149,8 @@ export async function fetchPlaces({ category, subtype = 'all', lat, lng, radius 
         phone:          tags.phone,
         description:    tags.description || tags['description:en'],
         address:        [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(' ') || null,
-        priceRange:     tags['price:range'] || null,
+        priceRange:     inferred,
+        priceIsInferred: inferred !== null && !tags['price:range'],
         dietVegetarian: tags['diet:vegetarian'],
         dietVegan:      tags['diet:vegan'],
         dietHalal:      tags['diet:halal'],

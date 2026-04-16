@@ -28,8 +28,9 @@ function detectSubtype(title, extract) {
 
 function detectFee(extract = '') {
   const t = extract.toLowerCase()
-  if (/free (admission|entry|entrance)|no (admission|entrance) fee/.test(t)) return 'no'
-  if (/admission fee|entrance fee|ticket(s)? (required|cost)|paid/.test(t))  return 'yes'
+  // Must be clearly about the place's own admission — avoid false positives
+  if (/\b(free admission|free entry|free entrance|admission free|entry is free|entrance is free|no admission fee|no entrance fee|open to the public free)\b/.test(t)) return 'no'
+  if (/\b(admission fee|entrance fee|admission charge|entry fee|tickets? (are |cost |required|must be)|paid admission|paid entry)\b/.test(t)) return 'yes'
   return null
 }
 
