@@ -64,9 +64,9 @@ export default function MapView({
       style={{ width: '100%', height: '100%' }}
       zoomControl
     >
-      {/* CartoDB Voyager tiles — free, no key, looks like Google Maps */}
+      {/* CartoDB Dark Matter tiles — free, no key, dark mode */}
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
         maxZoom={19}
       />
